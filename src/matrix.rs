@@ -1,4 +1,5 @@
 use std::iter::Sum;
+use std::mem::MaybeUninit;
 use std::ops::*;
 use num::{Float, One, Zero};
 use num::traits::NumAssign;
@@ -34,7 +35,7 @@ where
         // Arrays implement Default manually for every length up to 32 because [T; 0] needs to
         // implement Default even if T doesn't implement it.
         // We can just kind of ignore that caveat lol who cares.
-        Self(std::array::from_fn(|_| Default::default()))
+        Self::from_fn(|_, _| Default::default())
     }
 }
 
@@ -53,7 +54,7 @@ impl<T, const R: usize, const C: usize> Matrix<T, R, C> {
     where
         T: Zero,
     {
-        Self(std::array::from_fn(|_| Vector::zero()))
+        Self::from_fn(|_, _| T::zero())
     }
 
     pub fn set_zero(&mut self)
@@ -63,19 +64,65 @@ impl<T, const R: usize, const C: usize> Matrix<T, R, C> {
         self.0.fill_with(Vector::zero);
     }
 
+    pub fn all_ones() -> Self
+    where
+        T: One,
+    {
+        Self::from_fn(|_, _| T::one())
+    }
+
+    pub fn set_all_ones(&mut self)
+    where
+        T: One,
+    {
+        self.0.fill_with(Vector::one);
+    }
+
+    pub fn from_rows(rows: [Vector<T, C>; R]) -> Self {
+        Matrix(rows).transpose()
+    }
+
+    pub fn from_column_fn<F>(f: F) -> Self
+    where
+        F: FnMut(usize) -> Vector<T, R>,
+    {
+        Self(std::array::from_fn(f))
+    }
+
+    pub fn from_row_fn<F>(f: F) -> Self
+    where
+        F: FnMut(usize) -> Vector<T, C>,
+    {
+        Matrix(std::array::from_fn(f)).transpose()
+    }
+
+    pub fn from_fn<F>(mut f: F) -> Self
+    where
+        F: FnMut(usize, usize) -> T,
+    {
+        Self::from_column_fn(|i| Vector::from_fn(|j| f(i, j)))
+    }
+
     pub fn as_ptr(&self) -> *const T {
-        self.0.as_ptr() as *const T
+        self.0.as_ptr().cast()
     }
 
     pub fn as_mut_ptr(&mut self) -> *mut T {
-        self.0.as_mut_ptr() as *mut T
+        self.0.as_mut_ptr().cast()
     }
 
-    pub fn map_columns<F, U, const N: usize>(self, f: F) -> Matrix<U, N, C>
+    pub fn map_columns<U, const N: usize, F>(self, f: F) -> Matrix<U, N, C>
     where
         F: FnMut(Vector<T, R>) -> Vector<U, N>,
     {
         Matrix(self.0.map(f))
+    }
+
+    pub fn map<U, F>(self, mut f: F) -> Matrix<U, R, C>
+    where
+        F: FnMut(T) -> U,
+    {
+        self.map_columns(|column| column.map(&mut f))
     }
 
     pub fn mul<Rhs>(self, rhs: Rhs) -> Matrix<<T as Mul<Rhs>>::Output, R, C>
@@ -92,6 +139,18 @@ impl<T, const R: usize, const C: usize> Matrix<T, R, C> {
         T: Div<Rhs>,
     {
         self.map_columns(|lhs| lhs.div(rhs))
+    }
+
+    pub fn transpose(self) -> Matrix<T, C, R> {
+        let mut transposed: Matrix<MaybeUninit<T>, C, R> = Matrix::from_fn(|_, _| MaybeUninit::uninit());
+
+        for (i, column) in self.0.into_iter().enumerate() {
+            for (j, element) in column.0.into_iter().enumerate() {
+                transposed[j][i].write(element);
+            }
+        }
+
+        transposed.map(|element| unsafe { element.assume_init() })
     }
 }
 
@@ -117,12 +176,12 @@ impl<T, const N: usize> Matrix<T, N, N> {
         }
     }
 
-    pub fn transpose(&mut self) {
+    pub fn transpose_in_place(&mut self) {
         if N <= 1 {
             return;
         }
-        for i in 0..N - 1 {
-            for j in 1..N {
+        for i in 0 .. N - 1 {
+            for j in i .. N {
                 let [col_i, col_j] = self.0.get_disjoint_mut([i, j]).unwrap();
                 std::mem::swap(&mut col_i[j], &mut col_j[i]);
             }

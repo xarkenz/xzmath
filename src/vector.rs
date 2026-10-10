@@ -8,18 +8,25 @@ pub struct Vector<T, const N: usize>(
 );
 
 impl<T, const N: usize> Vector<T, N> {
+    pub fn from_fn<F>(f: F) -> Self
+    where
+        F: FnMut(usize) -> T,
+    {
+        Self(std::array::from_fn(f))
+    }
+
     pub fn zero() -> Self
     where
         T: Zero,
     {
-        Self(std::array::from_fn(|_| T::zero()))
+        Self::from_fn(|_| T::zero())
     }
 
     pub fn one() -> Self
     where
         T: One,
     {
-        Self(std::array::from_fn(|_| T::one()))
+        Self::from_fn(|_| T::one())
     }
 
     pub const fn splat(value: T) -> Self
@@ -37,7 +44,7 @@ impl<T, const N: usize> Vector<T, N> {
         self.0.as_mut_ptr()
     }
 
-    pub fn map<F, U>(self, f: F) -> Vector<U, N>
+    pub fn map<U, F>(self, f: F) -> Vector<U, N>
     where
         F: FnMut(T) -> U,
     {
@@ -237,7 +244,7 @@ where
         // Arrays implement Default manually for every length up to 32 because [T; 0] needs to
         // implement Default even if T doesn't implement it.
         // We can just kind of ignore that caveat lol who cares.
-        Self(std::array::from_fn(|_| Default::default()))
+        Self::from_fn(|_| Default::default())
     }
 }
 
@@ -331,11 +338,11 @@ where
 
     fn add(self, rhs: Vector<Rhs, N>) -> Self::Output {
         let mut pairs = std::iter::zip(self.0, rhs.0);
-        Vector(std::array::from_fn(|_| {
+        Vector::from_fn(|_| {
             // SAFETY: The size of both input arrays and the output array is N at compile time
             let (lhs, rhs) = unsafe { pairs.next().unwrap_unchecked() };
             lhs + rhs
-        }))
+        })
     }
 }
 
@@ -358,11 +365,11 @@ where
 
     fn sub(self, rhs: Vector<Rhs, N>) -> Self::Output {
         let mut pairs = std::iter::zip(self.0, rhs.0);
-        Vector(std::array::from_fn(|_| {
+        Vector::from_fn(|_| {
             // SAFETY: The size of both input arrays and the output array is N at compile time
             let (lhs, rhs) = unsafe { pairs.next().unwrap_unchecked() };
             lhs - rhs
-        }))
+        })
     }
 }
 
@@ -385,11 +392,11 @@ where
 
     fn mul(self, rhs: Vector<Rhs, N>) -> Self::Output {
         let mut pairs = std::iter::zip(self.0, rhs.0);
-        Vector(std::array::from_fn(|_| {
+        Vector::from_fn(|_| {
             // SAFETY: The size of both input arrays and the output array is N at compile time
             let (lhs, rhs) = unsafe { pairs.next().unwrap_unchecked() };
             lhs * rhs
-        }))
+        })
     }
 }
 
@@ -412,11 +419,11 @@ where
 
     fn div(self, rhs: Vector<Rhs, N>) -> Self::Output {
         let mut pairs = std::iter::zip(self.0, rhs.0);
-        Vector(std::array::from_fn(|_| {
+        Vector::from_fn(|_| {
             // SAFETY: The size of both input arrays and the output array is N at compile time
             let (lhs, rhs) = unsafe { pairs.next().unwrap_unchecked() };
             lhs / rhs
-        }))
+        })
     }
 }
 
