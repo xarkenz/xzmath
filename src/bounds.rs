@@ -1,6 +1,6 @@
 use std::ops::*;
 use num::{One, Zero};
-use crate::Vector;
+use crate::*;
 
 pub struct Bounds<T, const N: usize> {
     pub min: Vector<T, N>,
@@ -171,15 +171,15 @@ impl<T, const N: usize> Bounds<T, N> {
     }
 }
 
-impl<T> Bounds<T, 2> {
-    pub fn min_x_max_y(&self) -> Vector<T, 2>
+impl<T> Rectangle<T> {
+    pub fn min_x_max_y(&self) -> Vector2<T>
     where
         T: Copy,
     {
         Vector([self.min.x(), self.max.y()])
     }
 
-    pub fn max_x_min_y(&self) -> Vector<T, 2>
+    pub fn max_x_min_y(&self) -> Vector2<T>
     where
         T: Copy,
     {

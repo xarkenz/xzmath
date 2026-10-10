@@ -7,6 +7,10 @@ pub struct Vector<T, const N: usize>(
     pub [T; N],
 );
 
+pub type Vector2<T> = Vector<T, 2>;
+pub type Vector3<T> = Vector<T, 3>;
+pub type Vector4<T> = Vector<T, 4>;
+
 impl<T, const N: usize> Vector<T, N> {
     pub fn from_fn<F>(f: F) -> Self
     where
@@ -105,7 +109,7 @@ where
     }
 }
 
-impl<T> Vector<T, 2>
+impl<T> Vector2<T>
 where
     T: Copy,
 {
@@ -125,12 +129,12 @@ where
         self.0[1] = y;
     }
 
-    pub const fn with_z(&self, z: T) -> Vector<T, 3> {
+    pub const fn with_z(&self, z: T) -> Vector3<T> {
         Vector([self.x(), self.y(), z])
     }
 }
 
-impl<T> Vector<T, 3>
+impl<T> Vector3<T>
 where
     T: Copy,
 {
@@ -158,21 +162,21 @@ where
         self.0[2] = z;
     }
 
-    pub const fn xy(&self) -> Vector<T, 2> {
+    pub const fn xy(&self) -> Vector2<T> {
         Vector([self.x(), self.y()])
     }
 
-    pub const fn with_w(&self, w: T) -> Vector<T, 4> {
+    pub const fn with_w(&self, w: T) -> Vector4<T> {
         Vector([self.x(), self.y(), self.z(), w])
     }
 }
 
-impl<T> Vector<T, 3>
+impl<T> Vector3<T>
 where
     T: Copy + Mul,
     <T as Mul>::Output: Sub,
 {
-    pub fn cross(&self, rhs: Self) -> Vector<<<T as Mul>::Output as Sub>::Output, 3> {
+    pub fn cross(&self, rhs: Self) -> Vector3<<<T as Mul>::Output as Sub>::Output> {
         Vector([
             self.y() * rhs.z() - self.z() * rhs.y(),
             self.z() * rhs.x() - self.x() * rhs.z(),
@@ -181,7 +185,7 @@ where
     }
 }
 
-impl<T> Vector<T, 4>
+impl<T> Vector4<T>
 where
     T: Copy,
 {
@@ -217,7 +221,7 @@ where
         self.0[3] = w;
     }
 
-    pub const fn xyz(&self) -> Vector<T, 3> {
+    pub const fn xyz(&self) -> Vector3<T> {
         Vector([self.x(), self.y(), self.z()])
     }
 }

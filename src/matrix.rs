@@ -3,15 +3,22 @@ use std::mem::MaybeUninit;
 use std::ops::*;
 use num::{Float, One, Zero};
 use num::traits::NumAssign;
-use crate::Vector;
+use crate::*;
 
 #[repr(transparent)]
 pub struct Matrix<T, const R: usize, const C: usize>(
     pub [Vector<T, R>; C],
 );
 
-pub type Transform2D<T> = Matrix<T, 3, 3>;
-pub type Transform3D<T> = Matrix<T, 4, 4>;
+pub type Matrix2x2<T> = Matrix<T, 2, 2>;
+pub type Matrix2x3<T> = Matrix<T, 2, 3>;
+pub type Matrix2x4<T> = Matrix<T, 2, 4>;
+pub type Matrix3x2<T> = Matrix<T, 3, 2>;
+pub type Matrix3x3<T> = Matrix<T, 3, 3>;
+pub type Matrix3x4<T> = Matrix<T, 3, 4>;
+pub type Matrix4x2<T> = Matrix<T, 4, 2>;
+pub type Matrix4x3<T> = Matrix<T, 4, 3>;
+pub type Matrix4x4<T> = Matrix<T, 4, 4>;
 
 impl<T, const R: usize, const C: usize> Copy for Matrix<T, R, C>
 where
@@ -130,7 +137,7 @@ impl<T, const R: usize, const C: usize> Matrix<T, R, C> {
         Rhs: Copy,
         T: Mul<Rhs>,
     {
-        self.map_columns(|lhs| lhs.mul(rhs))
+        self.map(|lhs| lhs * rhs)
     }
 
     pub fn div<Rhs>(self, rhs: Rhs) -> Matrix<<T as Div<Rhs>>::Output, R, C>
@@ -138,7 +145,7 @@ impl<T, const R: usize, const C: usize> Matrix<T, R, C> {
         Rhs: Copy,
         T: Div<Rhs>,
     {
-        self.map_columns(|lhs| lhs.div(rhs))
+        self.map(|lhs| lhs / rhs)
     }
 
     pub fn transpose(self) -> Matrix<T, C, R> {
@@ -189,11 +196,11 @@ impl<T, const N: usize> Matrix<T, N, N> {
     }
 }
 
-impl<T> Transform3D<T>
+impl<T> Matrix4x4<T>
 where
     T: Float + NumAssign + Sum,
 {
-    pub fn affine(&self) -> Matrix<T, 3, 3> {
+    pub fn affine(&self) -> Matrix3x3<T> {
         Matrix([
             self[0].xyz(),
             self[1].xyz(),
@@ -237,12 +244,12 @@ where
         ]));
     }
 
-    pub fn translate(&mut self, amount: Vector<T, 3>) {
+    pub fn translate(&mut self, amount: Vector3<T>) {
         let to_add = self[0].mul(amount.x()) + self[1].mul(amount.y()) + self[2].mul(amount.z());
         self[3] += to_add;
     }
 
-    pub fn scale(&mut self, amount: Vector<T, 3>) {
+    pub fn scale(&mut self, amount: Vector3<T>) {
         self.scale_x(amount.x());
         self.scale_y(amount.y());
         self.scale_z(amount.z());
@@ -303,7 +310,7 @@ where
         ])
     }
 
-    pub fn set_look_at(&mut self, eye: Vector<T, 3>, center: Vector<T, 3>, up: Vector<T, 3>) {
+    pub fn set_look_at(&mut self, eye: Vector3<T>, center: Vector3<T>, up: Vector3<T>) {
         let forward = (eye - center).normalized();
         let right = up.cross(forward).normalized();
         let up = forward.cross(right).normalized();
@@ -314,13 +321,13 @@ where
         self[3].0 = [-right.dot(eye), -up.dot(eye), -forward.dot(eye), T::one()];
     }
 
-    pub fn new_look_at(eye: Vector<T, 3>, center: Vector<T, 3>, up: Vector<T, 3>) -> Self {
+    pub fn new_look_at(eye: Vector3<T>, center: Vector3<T>, up: Vector3<T>) -> Self {
         let mut transform = Self::zero();
         transform.set_look_at(eye, center, up);
         transform
     }
 
-    pub fn look_at(&mut self, eye: Vector<T, 3>, center: Vector<T, 3>, up: Vector<T, 3>) {
+    pub fn look_at(&mut self, eye: Vector3<T>, center: Vector3<T>, up: Vector3<T>) {
         let transform = Self::new_look_at(eye, center, up);
         *self *= transform;
     }
@@ -464,13 +471,13 @@ where
     }
 }
 
-impl<T> Mul<Vector<T, 3>> for Transform3D<T>
+impl<T> Mul<Vector3<T>> for Matrix4x4<T>
 where
     T: Copy + Add<Output = T> + Mul<Output = T> + Div<Output = T>,
 {
-    type Output = Vector<T, 3>;
+    type Output = Vector3<T>;
 
-    fn mul(self, rhs: Vector<T, 3>) -> Self::Output {
+    fn mul(self, rhs: Vector3<T>) -> Self::Output {
         let factor = self[0].w() * rhs.x() + self[1].w() * rhs.y() + self[2].w() * rhs.z() + self[3].w();
         Vector([
             (self[0].x() * rhs.x() + self[1].x() * rhs.y() + self[2].x() * rhs.z() + self[3].x()) / factor,
