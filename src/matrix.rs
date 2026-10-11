@@ -46,11 +46,13 @@ where
     }
 }
 
+#[cfg(feature = "bytemuck")]
 unsafe impl<T, const R: usize, const C: usize> bytemuck::Zeroable for Matrix<T, R, C>
 where
     T: bytemuck::Zeroable,
 {}
 
+#[cfg(feature = "bytemuck")]
 unsafe impl<T, const R: usize, const C: usize> bytemuck::Pod for Matrix<T, R, C>
 where
     T: bytemuck::Pod,

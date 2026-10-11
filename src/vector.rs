@@ -252,11 +252,13 @@ where
     }
 }
 
+#[cfg(feature = "bytemuck")]
 unsafe impl<T, const N: usize> bytemuck::Zeroable for Vector<T, N>
 where
     T: bytemuck::Zeroable,
 {}
 
+#[cfg(feature = "bytemuck")]
 unsafe impl<T, const N: usize> bytemuck::Pod for Vector<T, N>
 where
     T: bytemuck::Pod,

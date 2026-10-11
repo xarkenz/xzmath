@@ -1,11 +1,12 @@
 #[cfg(feature = "animation")]
-mod animation;
-mod bounds;
-mod matrix;
-mod vector;
+pub mod animation;
+pub mod bounds;
+pub mod interpolate;
+pub mod matrix;
+#[cfg(feature = "noise")]
+pub mod noise;
+pub mod vector;
 
-#[cfg(feature = "animation")]
-pub use animation::*;
 pub use bounds::*;
 pub use matrix::*;
 pub use vector::*;
