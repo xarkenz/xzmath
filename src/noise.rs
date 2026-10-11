@@ -100,7 +100,7 @@ pub struct PerlinNoiseCell1D {
 impl PerlinNoiseCell1D {
     pub fn compute_value<F>(&self, offset: f32, interpolate: F) -> f32
     where
-        F: Fn(f32, f32, f32) -> f32,
+        F: Interpolate<f32>,
     {
         let offset_0 = offset;
         let offset_1 = offset - 1.0;
