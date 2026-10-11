@@ -5,9 +5,9 @@ pub type InterpolateFn<T, V = T> = fn(T, V, V) -> V;
 
 pub trait Interpolate<T, V = T> : Fn(T, V, V) -> V {}
 
-impl<T, V> Interpolate<T, V> for T
+impl<T, V, F> Interpolate<T, V> for F
 where
-    T: Fn(T, V, V) -> V,
+    F: Fn(T, V, V) -> V,
 {}
 
 pub fn jump<T, V>(interpolant: T, value_0: V, value_1: V) -> V
