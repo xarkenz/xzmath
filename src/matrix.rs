@@ -46,6 +46,19 @@ where
     }
 }
 
+impl<T, const R: usize, const C: usize> Zero for Matrix<T, R, C>
+where
+    T: Zero,
+{
+    fn zero() -> Self {
+        Self::zero()
+    }
+
+    fn is_zero(&self) -> bool {
+        self.0.iter().all(Zero::is_zero)
+    }
+}
+
 #[cfg(feature = "bytemuck")]
 unsafe impl<T, const R: usize, const C: usize> bytemuck::Zeroable for Matrix<T, R, C>
 where
@@ -85,6 +98,10 @@ impl<T, const R: usize, const C: usize> Matrix<T, R, C> {
         T: One,
     {
         self.0.fill_with(Vector::one);
+    }
+
+    pub fn from_columns(columns: [Vector<T, R>; C]) -> Self {
+        Self(columns)
     }
 
     pub fn from_rows(rows: [Vector<T, C>; R]) -> Self {
@@ -127,11 +144,30 @@ impl<T, const R: usize, const C: usize> Matrix<T, R, C> {
         Matrix(self.0.map(f))
     }
 
+    pub fn map_columns_binary<Rhs, const M: usize, U, const N: usize, F>(self, rhs: Matrix<Rhs, M, C>, mut f: F) -> Matrix<U, N, C>
+    where
+        F: FnMut(Vector<T, R>, Vector<Rhs, M>) -> Vector<U, N>,
+    {
+        let mut pairs = std::iter::zip(self.0, rhs.0);
+        Matrix::from_column_fn(|_| {
+            // SAFETY: The size of both inputs and the output is C at compile time
+            let (lhs, rhs) = unsafe { pairs.next().unwrap_unchecked() };
+            f(lhs, rhs)
+        })
+    }
+
     pub fn map<U, F>(self, mut f: F) -> Matrix<U, R, C>
     where
         F: FnMut(T) -> U,
     {
         self.map_columns(|column| column.map(&mut f))
+    }
+
+    pub fn map_binary<Rhs, U, F>(self, rhs: Matrix<Rhs, R, C>, mut f: F) -> Matrix<U, R, C>
+    where
+        F: FnMut(T, Rhs) -> U,
+    {
+        self.map_columns_binary(rhs, |lhs, rhs| lhs.map_binary(rhs, &mut f))
     }
 
     pub fn mul<Rhs>(self, rhs: Rhs) -> Matrix<<T as Mul<Rhs>>::Output, R, C>
@@ -269,7 +305,7 @@ where
         self[2] = self[2].mul(amount);
     }
 
-    pub fn inverted(&self) -> Self {
+    pub fn inverse(&self) -> Self {
         // Borrowed from JOML (github.com/JOML-CI/JOML)
         let a = self[0][0] * self[1][1] - self[0][1] * self[1][0];
         let b = self[0][0] * self[1][2] - self[0][2] * self[1][0];
@@ -313,9 +349,9 @@ where
     }
 
     pub fn set_look_at(&mut self, eye: Vector3<T>, center: Vector3<T>, up: Vector3<T>) {
-        let forward = (eye - center).normalized();
-        let right = up.cross(forward).normalized();
-        let up = forward.cross(right).normalized();
+        let forward = (eye - center).normalize();
+        let right = up.cross(forward).normalize();
+        let up = forward.cross(right).normalize();
 
         self[0].0 = [right.x(), up.x(), forward.x(), T::zero()];
         self[1].0 = [right.y(), up.y(), forward.y(), T::zero()];
@@ -428,7 +464,60 @@ where
     type Output = Matrix<<T as Neg>::Output, R, C>;
 
     fn neg(self) -> Self::Output {
-        Matrix(self.0.map(|v| -v))
+        self.map(Neg::neg)
+    }
+}
+
+impl<T, const R: usize, const C: usize> Sum for Matrix<T, R, C>
+where
+    T: Zero + Add<Output = T>,
+{
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.reduce(|lhs, rhs| lhs + rhs).unwrap_or(Matrix::zero())
+    }
+}
+
+impl<Lhs, Rhs, const R: usize, const C: usize> Add<Matrix<Rhs, R, C>> for Matrix<Lhs, R, C>
+where
+    Lhs: Add<Rhs>,
+{
+    type Output = Matrix<<Lhs as Add<Rhs>>::Output, R, C>;
+
+    fn add(self, rhs: Matrix<Rhs, R, C>) -> Self::Output {
+        self.map_binary(rhs, |lhs, rhs| lhs + rhs)
+    }
+}
+
+impl<Lhs, Rhs, const R: usize, const C: usize> AddAssign<Matrix<Rhs, R, C>> for Matrix<Lhs, R, C>
+where
+    Lhs: AddAssign<Rhs>,
+{
+    fn add_assign(&mut self, rhs: Matrix<Rhs, R, C>) {
+        for (lhs, rhs) in std::iter::zip(&mut self.0, rhs.0) {
+            *lhs += rhs;
+        }
+    }
+}
+
+impl<Lhs, Rhs, const R: usize, const C: usize> Sub<Matrix<Rhs, R, C>> for Matrix<Lhs, R, C>
+where
+    Lhs: Sub<Rhs>,
+{
+    type Output = Matrix<<Lhs as Sub<Rhs>>::Output, R, C>;
+
+    fn sub(self, rhs: Matrix<Rhs, R, C>) -> Self::Output {
+        self.map_binary(rhs, |lhs, rhs| lhs - rhs)
+    }
+}
+
+impl<Lhs, Rhs, const R: usize, const C: usize> SubAssign<Matrix<Rhs, R, C>> for Matrix<Lhs, R, C>
+where
+    Lhs: SubAssign<Rhs>,
+{
+    fn sub_assign(&mut self, rhs: Matrix<Rhs, R, C>) {
+        for (lhs, rhs) in std::iter::zip(&mut self.0, rhs.0) {
+            *lhs -= rhs;
+        }
     }
 }
 

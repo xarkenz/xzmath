@@ -5,10 +5,12 @@ pub mod interpolate;
 pub mod matrix;
 #[cfg(feature = "noise")]
 pub mod noise;
+pub mod quaternion;
 pub mod vector;
 
 pub use bounds::*;
 pub use matrix::*;
+pub use quaternion::*;
 pub use vector::*;
 
 #[cfg(test)]

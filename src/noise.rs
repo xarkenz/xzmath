@@ -1,4 +1,4 @@
-use std::hash::{Hash, Hasher};
+use std::hash::Hasher;
 use fnv::FnvHasher;
 use crate::{Vector, Vector2};
 use crate::interpolate::Interpolate;
@@ -70,8 +70,8 @@ impl PerlinNoise1D {
     }
 
     pub fn get_cell_seed(&self, cell: i64) -> u64 {
-        let mut hasher = FnvHasher::with_key(self.base_seed);
-        cell.hash(&mut hasher);
+        let mut hasher = SimpleHasher::with_seed(self.base_seed);
+        hasher.write_i64(cell);
         hasher.finish()
     }
 
@@ -91,7 +91,7 @@ impl PerlinNoise1D {
     }
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct PerlinNoiseCell1D {
     grad_0: f32,
     grad_1: f32,
@@ -112,7 +112,7 @@ impl PerlinNoiseCell1D {
     }
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct PerlinNoise2D {
     base_seed: u64,
 }
@@ -128,8 +128,8 @@ impl PerlinNoise2D {
 
     pub fn get_cell_seed(&self, cell: Vector2<i64>) -> u64 {
         let mut hasher = SimpleHasher::with_seed(self.base_seed);
-        cell.x().hash(&mut hasher);
-        cell.y().hash(&mut hasher);
+        hasher.write_i64(cell.x());
+        hasher.write_i64(cell.y());
         hasher.finish()
     }
 
@@ -141,7 +141,8 @@ impl PerlinNoise2D {
 
         let [grad_00, grad_01, grad_10, grad_11] = [seed_00, seed_01, seed_10, seed_11].map(|seed| {
             let theta = scramble(seed) as f32 / u64::MAX as f32 * std::f32::consts::TAU;
-            Vector([theta.cos(), theta.sin()])
+            let (sin, cos) = theta.sin_cos();
+            Vector([cos, sin])
         });
 
         PerlinNoiseCell2D {
