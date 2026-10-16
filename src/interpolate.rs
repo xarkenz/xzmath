@@ -1,5 +1,6 @@
 use std::ops::{Add, Mul, Sub};
 use num::{Float, One, Zero};
+use crate::Quaternion;
 
 pub type InterpolateFn<T, V = T> = fn(T, V, V) -> V;
 
@@ -68,4 +69,14 @@ where
     let t = interpolant.clamp(T::zero(), T::one());
     let half_pi = T::zero().acos();
     lerp((half_pi * t).sin(), value_0, value_1)
+}
+
+pub fn slerp<T>(interpolant: T, value_0: Quaternion<T>, value_1: Quaternion<T>) -> Quaternion<T>
+where
+    T: Float,
+{
+    let angle = value_0.angle_between(value_1);
+    let weight_0 = ((T::one() - interpolant) * angle).sin();
+    let weight_1 = (interpolant * angle).sin();
+    (value_0.mul(weight_0) + value_1.mul(weight_1)).div(angle.sin())
 }

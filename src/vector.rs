@@ -1,4 +1,3 @@
-use std::iter::Sum;
 use std::ops::*;
 use num::{Float, One, Zero};
 
@@ -165,17 +164,17 @@ impl<T, const N: usize> Vector<T, N> {
     pub fn dot<Rhs>(self, rhs: Vector<Rhs, N>) -> <T as Mul<Rhs>>::Output
     where
         T: Mul<Rhs>,
-        <T as Mul<Rhs>>::Output: Sum,
+        <T as Mul<Rhs>>::Output: Zero + Add<Output = <T as Mul<Rhs>>::Output>,
     {
         std::iter::zip(self.0, rhs.0)
             .map(|(lhs, rhs)| lhs * rhs)
-            .sum()
+            .fold(Zero::zero(), |lhs, rhs| lhs + rhs)
     }
 
     pub fn magnitude_squared(self) -> <T as Mul>::Output
     where
         T: Copy + Mul,
-        <T as Mul>::Output: Sum,
+        <T as Mul>::Output: Zero + Add<Output = <T as Mul>::Output>,
     {
         self.dot(self)
     }
@@ -183,16 +182,30 @@ impl<T, const N: usize> Vector<T, N> {
     pub fn magnitude(self) -> <T as Mul>::Output
     where
         T: Copy + Mul,
-        <T as Mul>::Output: Float + Sum,
+        <T as Mul>::Output: Float,
     {
         self.magnitude_squared().sqrt()
     }
 
     pub fn normalize(self) -> Self
     where
-        T: Copy + Float + Sum,
+        T: Float,
     {
         self.div(self.magnitude())
+    }
+
+    pub fn cos_angle_between(self, other: Self) -> T
+    where
+        T: Float,
+    {
+        (self.dot(other) / (self.magnitude() * other.magnitude())).clamp(-T::one(), T::one())
+    }
+
+    pub fn angle_between(self, other: Self) -> T
+    where
+        T: Float,
+    {
+        self.cos_angle_between(other).acos()
     }
 
     pub fn equals_delta<D>(self, other: Self, delta: Vector<D, N>) -> bool
@@ -220,15 +233,6 @@ where
 
     pub const fn with_z(&self, z: T) -> Vector3<T> {
         Vector([self.x(), self.y(), z])
-    }
-
-    pub fn fixed_dot<Rhs>(self, rhs: Vector2<Rhs>) -> <<T as Mul<Rhs>>::Output as Add>::Output
-    where
-        Rhs: Copy,
-        T: Mul<Rhs>,
-        <T as Mul<Rhs>>::Output: Add,
-    {
-        self.x() * rhs.x() + self.y() * rhs.y()
     }
 
     pub fn cross<Rhs>(self, rhs: Vector2<Rhs>) -> <<T as Mul<Rhs>>::Output as Sub>::Output
@@ -288,16 +292,6 @@ where
 
     pub const fn with_w(&self, w: T) -> Vector4<T> {
         Vector([self.x(), self.y(), self.z(), w])
-    }
-
-    pub fn fixed_dot<Rhs>(self, rhs: Vector3<Rhs>) -> <<T as Mul<Rhs>>::Output as Add>::Output
-    where
-        Rhs: Copy,
-        T: Mul<Rhs>,
-        <T as Mul<Rhs>>::Output: Add,
-        <<T as Mul<Rhs>>::Output as Add>::Output: Add<<T as Mul<Rhs>>::Output, Output = <<T as Mul<Rhs>>::Output as Add>::Output>,
-    {
-        self.xy().fixed_dot(rhs.xy()) + self.z() * rhs.z()
     }
 
     pub fn cross<Rhs>(self, rhs: Vector3<Rhs>) -> Vector3<<<T as Mul<Rhs>>::Output as Sub>::Output>
@@ -380,16 +374,6 @@ where
 
     pub const fn xyz(&self) -> Vector3<T> {
         Vector([self.x(), self.y(), self.z()])
-    }
-
-    pub fn fixed_dot<Rhs>(self, rhs: Vector4<Rhs>) -> <<T as Mul<Rhs>>::Output as Add>::Output
-    where
-        Rhs: Copy,
-        T: Mul<Rhs>,
-        <T as Mul<Rhs>>::Output: Add,
-        <<T as Mul<Rhs>>::Output as Add>::Output: Add<<T as Mul<Rhs>>::Output, Output = <<T as Mul<Rhs>>::Output as Add>::Output>,
-    {
-        self.xyz().fixed_dot(rhs.xyz()) + self.w() * rhs.w()
     }
 }
 
@@ -504,12 +488,12 @@ where
     }
 }
 
-impl<T, const N: usize> Sum for Vector<T, N>
+impl<T, const N: usize> std::iter::Sum for Vector<T, N>
 where
     T: Zero + Add<Output = T>,
 {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
-        iter.reduce(|lhs, rhs| lhs + rhs).unwrap_or(Vector::zero())
+        iter.fold(Vector::zero(), |lhs, rhs| lhs + rhs)
     }
 }
 

@@ -1,8 +1,6 @@
-use std::iter::Sum;
 use std::mem::MaybeUninit;
 use std::ops::*;
 use num::{Float, One, Zero};
-use num::traits::NumAssign;
 use crate::*;
 
 #[repr(transparent)]
@@ -236,7 +234,7 @@ impl<T, const N: usize> Matrix<T, N, N> {
 
 impl<T> Matrix4x4<T>
 where
-    T: Float + NumAssign + Sum,
+    T: Float,
 {
     pub fn affine(&self) -> Matrix3x3<T> {
         Matrix([
@@ -284,7 +282,7 @@ where
 
     pub fn translate(&mut self, amount: Vector3<T>) {
         let to_add = self[0].mul(amount.x()) + self[1].mul(amount.y()) + self[2].mul(amount.z());
-        self[3] += to_add;
+        self[3] = self[3] + to_add;
     }
 
     pub fn scale(&mut self, amount: Vector3<T>) {
@@ -468,12 +466,12 @@ where
     }
 }
 
-impl<T, const R: usize, const C: usize> Sum for Matrix<T, R, C>
+impl<T, const R: usize, const C: usize> std::iter::Sum for Matrix<T, R, C>
 where
     T: Zero + Add<Output = T>,
 {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
-        iter.reduce(|lhs, rhs| lhs + rhs).unwrap_or(Matrix::zero())
+        iter.fold(Matrix::zero(), |lhs, rhs| lhs + rhs)
     }
 }
 
@@ -525,7 +523,7 @@ impl<Lhs, Rhs, const R: usize, const C: usize> Mul<Vector<Rhs, C>> for Matrix<Lh
 where
     Lhs: Mul<Rhs>,
     Rhs: Copy,
-    <Lhs as Mul<Rhs>>::Output: Zero + Sum,
+    <Lhs as Mul<Rhs>>::Output: Zero,
 {
     type Output = Vector<<Lhs as Mul<Rhs>>::Output, R>;
 
@@ -540,7 +538,7 @@ impl<Lhs, Rhs, const R: usize, const N: usize, const C: usize> Mul<Matrix<Rhs, N
 where
     Lhs: Copy + Mul<Rhs>,
     Rhs: Copy,
-    <Lhs as Mul<Rhs>>::Output: Zero + Sum,
+    <Lhs as Mul<Rhs>>::Output: Zero,
 {
     type Output = Matrix<<Lhs as Mul<Rhs>>::Output, R, C>;
 
@@ -551,7 +549,7 @@ where
 
 impl<Lhs, Rhs, const R: usize, const C: usize> MulAssign<Matrix<Rhs, C, C>> for Matrix<Lhs, R, C>
 where
-    Lhs: Copy + Zero + Mul<Rhs, Output = Lhs> + Sum,
+    Lhs: Copy + Zero + Mul<Rhs, Output = Lhs>,
     Rhs: Copy,
 {
     fn mul_assign(&mut self, rhs: Matrix<Rhs, C, C>) {
