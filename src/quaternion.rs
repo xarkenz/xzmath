@@ -1,6 +1,6 @@
 use std::ops::*;
 use num::{Float, One, Zero};
-use crate::{Vector3, Vector4};
+use crate::{Matrix3x3, Matrix4x4, Vector3, Vector4};
 
 #[repr(transparent)]
 pub struct Quaternion<T>(
@@ -224,6 +224,40 @@ impl<T> Quaternion<T> {
         let vector_mul = real * real - imag.dot(imag);
         let dot = imag.dot(vector);
         vector.mul(vector_mul) + imag.mul(dot + dot) + imag.cross(vector).mul(real + real)
+    }
+
+    pub fn to_matrix_3x3(self) -> Matrix3x3<T>
+    where
+        T: Copy + One + Mul<Output = T> + Add<Output = T> + Sub<Output = T>,
+    {
+        let [x, y, z, w] = self.0.0;
+
+        let xx = x * x;
+        let yy = y * y;
+        let zz = z * z;
+
+        let xy = x * y;
+        let yz = y * z;
+        let zx = z * x;
+
+        let xw = x * w;
+        let yw = y * w;
+        let zw = z * w;
+
+        let two = T::one() + T::one();
+
+        Matrix3x3::from_columns([
+            [T::one() - two * (yy + zz), two * (xy - zw), two * (zx + yw)].into(),
+            [two * (xy + zw), T::one() - two * (zz + xx), two * (yz - xw)].into(),
+            [two * (zx - yw), two * (yz + xw), T::one() - two * (xx + yy)].into(),
+        ])
+    }
+
+    pub fn to_matrix_4x4(self) -> Matrix4x4<T>
+    where
+        T: Copy + Zero + One + Mul<Output = T> + Add<Output = T> + Sub<Output = T>,
+    {
+        self.to_matrix_3x3().extend_4x4()
     }
 }
 

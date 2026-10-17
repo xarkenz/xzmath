@@ -232,18 +232,60 @@ impl<T, const N: usize> Matrix<T, N, N> {
     }
 }
 
-impl<T> Matrix4x4<T>
-where
-    T: Float,
-{
-    pub fn affine(&self) -> Matrix3x3<T> {
-        Matrix([
+impl<T> Matrix2x2<T> {
+    pub fn extend_3x3(&self) -> Matrix3x3<T>
+    where
+        T: Copy + Zero + One,
+    {
+        Matrix3x3::from_columns([
+            self[0].with_z(T::zero()),
+            self[1].with_z(T::zero()),
+            [T::zero(), T::zero(), T::one()].into(),
+        ])
+    }
+}
+
+impl<T> Matrix3x3<T> {
+    pub fn shrink_2x2(&self) -> Matrix2x2<T>
+    where
+        T: Copy,
+    {
+        Matrix2x2::from_columns([
+            self[0].xy(),
+            self[1].xy(),
+        ])
+    }
+
+    pub fn extend_4x4(&self) -> Matrix4x4<T>
+    where
+        T: Copy + Zero + One,
+    {
+        Matrix4x4::from_columns([
+            self[0].with_w(T::zero()),
+            self[1].with_w(T::zero()),
+            self[2].with_w(T::zero()),
+            [T::zero(), T::zero(), T::zero(), T::one()].into(),
+        ])
+    }
+}
+
+impl<T> Matrix4x4<T> {
+    pub fn shrink_3x3(&self) -> Matrix3x3<T>
+    where
+        T: Copy,
+    {
+        Matrix3x3::from_columns([
             self[0].xyz(),
             self[1].xyz(),
             self[2].xyz(),
         ])
     }
+}
 
+impl<T> Matrix4x4<T>
+where
+    T: Float,
+{
     pub fn rotate_x(&mut self, angle: T) {
         let zero = T::zero();
         let one = T::one();
