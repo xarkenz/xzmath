@@ -200,23 +200,33 @@ impl<T, const R: usize, const C: usize> Matrix<T, R, C> {
 impl<T, const N: usize> Matrix<T, N, N> {
     pub fn identity() -> Self
     where
-        T: Copy + Zero + One,
+        T: Zero + One,
     {
         let mut matrix = Self::zero();
-        for n in 0..N {
-            matrix[n][n] = T::one();
+        for i in 0..N {
+            matrix[i][i] = T::one();
         }
         matrix
     }
 
     pub fn set_identity(&mut self)
     where
-        T: Copy + Zero + One,
+        T: Zero + One,
     {
         self.set_zero();
-        for n in 0..N {
-            self[n][n] = T::one();
+        for i in 0..N {
+            self[i][i] = T::one();
         }
+    }
+
+    pub fn trace(&self) -> T
+    where
+        T: Copy + Zero + Add<Output = T>,
+    {
+        self.0
+            .iter()
+            .enumerate()
+            .fold(T::zero(), |sum, (i, column)| sum + column[i])
     }
 
     pub fn transpose_in_place(&mut self) {
@@ -269,6 +279,22 @@ impl<T> Matrix3x3<T> {
     }
 }
 
+impl<T> Matrix3x3<T>
+where
+    T: Float,
+{
+    pub fn to_quaternion(&self) -> Quaternion<T> {
+        let imag = Vector([
+            self[1][2] - self[2][1],
+            self[2][0] - self[0][2],
+            self[0][1] - self[1][0],
+        ]);
+        let two = T::one() + T::one();
+        let real = (self.trace() + T::one()).sqrt() / two;
+        Quaternion::from_parts(real, imag.div((two + two) * real))
+    }
+}
+
 impl<T> Matrix4x4<T> {
     pub fn shrink_3x3(&self) -> Matrix3x3<T>
     where
@@ -286,6 +312,17 @@ impl<T> Matrix4x4<T>
 where
     T: Float,
 {
+    pub fn to_quaternion(&self) -> Quaternion<T> {
+        let imag = Vector([
+            self[1][2] - self[2][1],
+            self[2][0] - self[0][2],
+            self[0][1] - self[1][0],
+        ]);
+        let two = T::one() + T::one();
+        let real = self.trace().sqrt() / two;
+        Quaternion::from_parts(real, imag.div((two + two) * real))
+    }
+
     pub fn rotate_x(&mut self, angle: T) {
         let zero = T::zero();
         let one = T::one();
