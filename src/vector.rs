@@ -1,13 +1,27 @@
 use std::ops::*;
 use num::{Float, One, Zero};
 
+/// Representation of a mathematical vector as an array.
+///
+/// `T` represents the type of each component in the vector; `N` represents the number of
+/// components. As such, this type is analogous to [`[T; N]`](array).
+///
+/// This type is designed to be very flexible; `T` does not have any inherent restrictions. The set
+/// of available vector operations is dependent on the operations defined on `T`&mdash;for example,
+/// a [dot product](Self::dot) requires implementations of [`Mul`] and [`Add`]. In addition, `N` can
+/// be any `usize` value, though it must be constant, and some operations are only defined for
+/// certain values&mdash;for example, a [cross product](Self::cross) is only defined for two- or
+/// three-dimensional vectors.
 #[repr(transparent)]
 pub struct Vector<T, const N: usize>(
     pub [T; N],
 );
 
+/// Convenience alias for a two-dimensional vector.
 pub type Vector2<T> = Vector<T, 2>;
+/// Convenience alias for a three-dimensional vector.
 pub type Vector3<T> = Vector<T, 3>;
+/// Convenience alias for a four-dimensional vector.
 pub type Vector4<T> = Vector<T, 4>;
 
 impl<T, const N: usize> Copy for Vector<T, N>
@@ -83,6 +97,10 @@ impl<T, const N: usize> From<Vector<T, N>> for [T; N] {
 }
 
 impl<T, const N: usize> Vector<T, N> {
+    /// Creates a vector where each component is produced by calling `f` with that component's index
+    /// while walking forward through the vector.
+    ///
+    /// This is analogous to [`std::array::from_fn`].
     pub fn from_fn<F>(f: F) -> Self
     where
         F: FnMut(usize) -> T,
@@ -90,6 +108,7 @@ impl<T, const N: usize> Vector<T, N> {
         Self(std::array::from_fn(f))
     }
 
+    /// Creates a vector where all components are initialized to zero.
     pub fn zero() -> Self
     where
         T: Zero,
@@ -97,6 +116,7 @@ impl<T, const N: usize> Vector<T, N> {
         Self::from_fn(|_| T::zero())
     }
 
+    /// Creates a vector where all components are initialized to one.
     pub fn one() -> Self
     where
         T: One,
@@ -104,6 +124,9 @@ impl<T, const N: usize> Vector<T, N> {
         Self::from_fn(|_| T::one())
     }
 
+    /// Creates a vector where all components are initialized to `value`.
+    ///
+    /// This is analogous to `[value; N]` for arrays.
     pub const fn splat(value: T) -> Self
     where
         T: Copy,
@@ -111,18 +134,31 @@ impl<T, const N: usize> Vector<T, N> {
         Self([value; N])
     }
 
+    /// Returns a raw pointer to the underlying array's buffer.
+    ///
+    /// This is analogous to [`slice::as_ptr()`].
     pub fn as_ptr(&self) -> *const T {
         self.0.as_ptr()
     }
 
+    /// Returns an unsafe mutable pointer to the underlying array's buffer.
+    ///
+    /// This is analogous to [`slice::as_mut_ptr()`].
     pub fn as_mut_ptr(&mut self) -> *mut T {
         self.0.as_mut_ptr()
     }
 
+    /// Returns the value of the component at `index`.
+    ///
+    /// Returns [`None`] if `index` &ge; `N`.
     pub fn get(self, index: usize) -> Option<T> {
         self.0.into_iter().nth(index)
     }
 
+    /// Returns a vector with the same number of components as `self`, with function `f` applied to
+    /// each component in order.
+    ///
+    /// This is analogous to [`array::map()`].
     pub fn map<U, F>(self, f: F) -> Vector<U, N>
     where
         F: FnMut(T) -> U,
@@ -130,6 +166,8 @@ impl<T, const N: usize> Vector<T, N> {
         Vector(self.0.map(f))
     }
 
+    /// Returns a vector with the same number of components as both `self` and `rhs`, with function
+    /// `f` applied to each component of `self` and `rhs` in order.
     pub fn map_binary<Rhs, U, F>(self, rhs: Vector<Rhs, N>, mut f: F) -> Vector<U, N>
     where
         F: FnMut(T, Rhs) -> U,
@@ -142,6 +180,8 @@ impl<T, const N: usize> Vector<T, N> {
         })
     }
 
+    /// Returns the result of a vector-scalar multiplication, where each component of the output is
+    /// the corresponding component of `self` multiplied by `rhs`.
     pub fn mul<Rhs>(self, rhs: Rhs) -> Vector<<T as Mul<Rhs>>::Output, N>
     where
         Rhs: Copy,
@@ -150,6 +190,11 @@ impl<T, const N: usize> Vector<T, N> {
         self.map(|lhs| lhs * rhs)
     }
 
+    /// Returns the result of a scalar-vector multiplication, where each component of the output is
+    /// `lhs` multiplied by the corresponding component of `self`.
+    ///
+    /// For most types, particularly those where multiplication is commutative, this is equivalent
+    /// to [`mul()`](Self::mul).
     pub fn pre_mul<Lhs>(self, lhs: Lhs) -> Vector<<Lhs as Mul<T>>::Output, N>
     where
         Lhs: Copy + Mul<T>,
@@ -157,6 +202,8 @@ impl<T, const N: usize> Vector<T, N> {
         self.map(|rhs| lhs * rhs)
     }
 
+    /// Returns the result of a vector-scalar division, where each component of the output is the
+    /// corresponding component of `self` divided by `rhs`.
     pub fn div<Rhs>(self, rhs: Rhs) -> Vector<<T as Div<Rhs>>::Output, N>
     where
         Rhs: Copy,
@@ -165,6 +212,9 @@ impl<T, const N: usize> Vector<T, N> {
         self.map(|lhs| lhs / rhs)
     }
 
+    /// Returns the dot product of `self` and `rhs`.
+    ///
+    /// This is calculated as `self[0]*rhs[0] + self[1]*rhs[1] + ... + self[N-1]*rhs[N-1]`.
     pub fn dot<Rhs>(self, rhs: Vector<Rhs, N>) -> <T as Mul<Rhs>>::Output
     where
         T: Mul<Rhs>,
@@ -175,6 +225,11 @@ impl<T, const N: usize> Vector<T, N> {
             .fold(Zero::zero(), |lhs, rhs| lhs + rhs)
     }
 
+    /// Returns the square of the magnitude of `self`.
+    ///
+    /// This is calculated as `self[0]² + self[1]² + ... + self[N-1]²`. Since no square root is
+    /// performed, this operation is usually faster than [`magnitude()`](Self::magnitude), and is
+    /// also available for types with no square root operation (e.g. integers).
     pub fn magnitude_squared(self) -> <T as Mul>::Output
     where
         T: Copy + Mul,
@@ -183,6 +238,11 @@ impl<T, const N: usize> Vector<T, N> {
         self.dot(self)
     }
 
+    /// Returns the magnitude of `self`; that is, the linear distance between the origin and the
+    /// endpoint of the vector.
+    ///
+    /// If the square of the magnitude is needed, prefer using
+    /// [`magnitude_squared()`](Self::magnitude_squared).
     pub fn magnitude(self) -> <T as Mul>::Output
     where
         T: Copy + Mul,
@@ -191,6 +251,7 @@ impl<T, const N: usize> Vector<T, N> {
         self.magnitude_squared().sqrt()
     }
 
+    /// Returns a unit (normal) vector pointing in the same direction as `self`.
     pub fn normalize(self) -> Self
     where
         T: Float,
@@ -198,6 +259,11 @@ impl<T, const N: usize> Vector<T, N> {
         self.div(self.magnitude())
     }
 
+    /// Returns the cosine of the smallest angle between `self` and `other`.
+    ///
+    /// This can be interpreted as a value in the range `[-1, 1]` which indicates to what extent
+    /// `self` and `other` point in the same direction. A value of `1` means the vectors point in
+    /// the same direction, and a value of `-1` means the vectors point in opposite directions.
     pub fn cos_angle_between(self, other: Self) -> T
     where
         T: Float,
@@ -205,6 +271,10 @@ impl<T, const N: usize> Vector<T, N> {
         (self.dot(other) / (self.magnitude() * other.magnitude())).clamp(-T::one(), T::one())
     }
 
+    /// Returns the smallest angle between `self` and `other`, in radians.
+    ///
+    /// If the cosine of this angle is needed, prefer using
+    /// [`cos_angle_between()`](Self::cos_angle_between).
     pub fn angle_between(self, other: Self) -> T
     where
         T: Float,
@@ -212,6 +282,12 @@ impl<T, const N: usize> Vector<T, N> {
         self.cos_angle_between(other).acos()
     }
 
+    /// Returns `true` if for each component `i`, `self[i]` and `other[i]` are within `delta[i]` of
+    /// each other.
+    ///
+    /// This can be thought of as a sort of "fuzzy equals" where `self` and `other` are allowed to
+    /// vary within some range of tolerance. If the same tolerance is desired in all dimensions, use
+    /// [`splat()`](Vector::splat) to construct `delta`.
     pub fn equals_delta<D>(self, other: Self, delta: Vector<D, N>) -> bool
     where
         T: PartialOrd + Sub<Output = D>,
@@ -224,29 +300,35 @@ impl<T, const N: usize> Vector<T, N> {
 }
 
 impl<T> Vector2<T> {
+    /// Returns `self[0]`.
     pub fn x(self) -> T {
         let [x, _] = self.0;
         x
     }
 
+    /// Returns `self[1]`.
     pub fn y(self) -> T {
         let [_, y] = self.0;
         y
     }
 
+    /// Sets `self[0]` to the given value `x`.
     pub fn set_x(&mut self, x: T) {
         self.0[0] = x;
     }
 
+    /// Sets `self[1]` to the given value `y`.
     pub fn set_y(&mut self, y: T) {
         self.0[1] = y;
     }
 
+    /// Creates a three-dimensional vector by appending a third component `z` to `self`.
     pub fn with_z(self, z: T) -> Vector3<T> {
         let [x, y] = self.0;
         Vector([x, y, z])
     }
 
+    /// Returns the scalar cross product of two-dimensional vectors `self` and `rhs`.
     pub fn cross<Rhs>(self, rhs: Vector2<Rhs>) -> <<T as Mul<Rhs>>::Output as Sub>::Output
     where
         T: Mul<Rhs>,
@@ -259,48 +341,58 @@ impl<T> Vector2<T> {
 }
 
 impl<T> Vector3<T> {
+    /// Returns `self[0]`.
     pub fn x(self) -> T {
         let [x, _, _] = self.0;
         x
     }
 
+    /// Returns `self[1]`.
     pub fn y(self) -> T {
         let [_, y, _] = self.0;
         y
     }
 
+    /// Returns `self[2]`.
     pub fn z(self) -> T {
         let [_, _, z] = self.0;
         z
     }
 
+    /// Sets `self[0]` to the given value `x`.
     pub fn set_x(&mut self, x: T) {
         self.0[0] = x;
     }
 
+    /// Sets `self[1]` to the given value `y`.
     pub fn set_y(&mut self, y: T) {
         self.0[1] = y;
     }
 
+    /// Sets `self[2]` to the given value `z`.
     pub fn set_z(&mut self, z: T) {
         self.0[2] = z;
     }
 
+    /// Creates a two-dimensional vector by discarding the third component of `self`.
     pub fn xy(self) -> Vector2<T> {
         let [x, y, _] = self.0;
         Vector([x, y])
     }
 
+    /// Creates a four-dimensional vector by appending a fourth component `w` to `self`.
     pub fn with_w(self, w: T) -> Vector4<T> {
         let [x, y, z] = self.0;
         Vector([x, y, z, w])
     }
 
+    /// Returns the first two components of `self` and the third separately.
     pub fn split_z(self) -> (Vector2<T>, T) {
         let [x, y, z] = self.0;
         (Vector([x, y]), z)
     }
 
+    /// Returns the vector cross product of three-dimensional vectors `self` and `rhs`.
     pub fn cross<Rhs>(self, rhs: Vector3<Rhs>) -> Vector3<<<T as Mul<Rhs>>::Output as Sub>::Output>
     where
         T: Copy + Mul<Rhs>,
@@ -316,47 +408,57 @@ impl<T> Vector3<T> {
 }
 
 impl<T> Vector4<T> {
+    /// Returns `self[0]`.
     pub fn x(self) -> T {
         let [x, _, _, _] = self.0;
         x
     }
 
+    /// Returns `self[1]`.
     pub fn y(self) -> T {
         let [_, y, _, _] = self.0;
         y
     }
 
+    /// Returns `self[2]`.
     pub fn z(self) -> T {
         let [_, _, z, _] = self.0;
         z
     }
 
+    /// Returns `self[3]`.
     pub fn w(self) -> T {
         let [_, _, _, w] = self.0;
         w
     }
 
+    /// Sets `self[0]` to the given value `x`.
     pub fn set_x(&mut self, x: T) {
         self.0[0] = x;
     }
 
+    /// Sets `self[1]` to the given value `y`.
     pub fn set_y(&mut self, y: T) {
         self.0[1] = y;
     }
 
+    /// Sets `self[2]` to the given value `z`.
     pub fn set_z(&mut self, z: T) {
         self.0[2] = z;
     }
 
+    /// Sets `self[3]` to the given value `w`.
     pub fn set_w(&mut self, w: T) {
         self.0[3] = w;
     }
 
+    /// Creates a three-dimensional vector by discarding the fourth component of `self`.
     pub fn xyz(self) -> Vector3<T> {
         let [x, y, z, _] = self.0;
         Vector([x, y, z])
     }
 
+    /// Returns the first three components of `self` and the fourth separately.
     pub fn split_w(self) -> (Vector3<T>, T) {
         let [x, y, z, w] = self.0;
         (Vector([x, y, z]), w)

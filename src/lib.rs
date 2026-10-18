@@ -1,3 +1,6 @@
+//! This crate provides infrastructure for performing various calculations, with a particular
+//! emphasis on games and animation.
+
 #[cfg(feature = "animation")]
 pub mod animation;
 pub mod bounds;
