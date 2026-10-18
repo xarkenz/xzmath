@@ -119,6 +119,10 @@ impl<T, const N: usize> Vector<T, N> {
         self.0.as_mut_ptr()
     }
 
+    pub fn get(self, index: usize) -> Option<T> {
+        self.0.into_iter().nth(index)
+    }
+
     pub fn map<U, F>(self, f: F) -> Vector<U, N>
     where
         F: FnMut(T) -> U,
@@ -219,33 +223,17 @@ impl<T, const N: usize> Vector<T, N> {
     }
 }
 
-impl<T> Vector2<T>
-where
-    T: Copy,
-{
-    pub const fn x(&self) -> T {
-        self.0[0]
-    }
-
-    pub const fn y(&self) -> T {
-        self.0[1]
-    }
-
-    pub const fn with_z(&self, z: T) -> Vector3<T> {
-        Vector([self.x(), self.y(), z])
-    }
-
-    pub fn cross<Rhs>(self, rhs: Vector2<Rhs>) -> <<T as Mul<Rhs>>::Output as Sub>::Output
-    where
-        Rhs: Copy,
-        T: Mul<Rhs>,
-        <T as Mul<Rhs>>::Output: Sub,
-    {
-        self.x() * rhs.y() - self.y() * rhs.x()
-    }
-}
-
 impl<T> Vector2<T> {
+    pub fn x(self) -> T {
+        let [x, _] = self.0;
+        x
+    }
+
+    pub fn y(self) -> T {
+        let [_, y] = self.0;
+        y
+    }
+
     pub fn set_x(&mut self, x: T) {
         self.0[0] = x;
     }
@@ -254,61 +242,38 @@ impl<T> Vector2<T> {
         self.0[1] = y;
     }
 
-    pub fn into_x(self) -> T {
-        let [x, _] = self.0;
-        x
-    }
-
-    pub fn into_y(self) -> T {
-        let [_, y] = self.0;
-        y
-    }
-
-    pub fn into_with_z(self, z: T) -> Vector3<T> {
+    pub fn with_z(self, z: T) -> Vector3<T> {
         let [x, y] = self.0;
         Vector([x, y, z])
     }
-}
 
-impl<T> Vector3<T>
-where
-    T: Copy,
-{
-    pub const fn x(&self) -> T {
-        self.0[0]
-    }
-
-    pub const fn y(&self) -> T {
-        self.0[1]
-    }
-
-    pub const fn z(&self) -> T {
-        self.0[2]
-    }
-
-    pub const fn xy(&self) -> Vector2<T> {
-        Vector([self.x(), self.y()])
-    }
-
-    pub const fn with_w(&self, w: T) -> Vector4<T> {
-        Vector([self.x(), self.y(), self.z(), w])
-    }
-
-    pub fn cross<Rhs>(self, rhs: Vector3<Rhs>) -> Vector3<<<T as Mul<Rhs>>::Output as Sub>::Output>
+    pub fn cross<Rhs>(self, rhs: Vector2<Rhs>) -> <<T as Mul<Rhs>>::Output as Sub>::Output
     where
-        Rhs: Copy,
         T: Mul<Rhs>,
         <T as Mul<Rhs>>::Output: Sub,
     {
-        Vector([
-            self.y() * rhs.z() - self.z() * rhs.y(),
-            self.z() * rhs.x() - self.x() * rhs.z(),
-            self.x() * rhs.y() - self.y() * rhs.x(),
-        ])
+        let [lhs_x, lhs_y] = self.0;
+        let [rhs_x, rhs_y] = rhs.0;
+        lhs_x * rhs_y - lhs_y * rhs_x
     }
 }
 
 impl<T> Vector3<T> {
+    pub fn x(self) -> T {
+        let [x, _, _] = self.0;
+        x
+    }
+
+    pub fn y(self) -> T {
+        let [_, y, _] = self.0;
+        y
+    }
+
+    pub fn z(self) -> T {
+        let [_, _, z] = self.0;
+        z
+    }
+
     pub fn set_x(&mut self, x: T) {
         self.0[0] = x;
     }
@@ -321,27 +286,12 @@ impl<T> Vector3<T> {
         self.0[2] = z;
     }
 
-    pub fn into_x(self) -> T {
-        let [x, _, _] = self.0;
-        x
-    }
-
-    pub fn into_y(self) -> T {
-        let [_, y, _] = self.0;
-        y
-    }
-
-    pub fn into_z(self) -> T {
-        let [_, _, z] = self.0;
-        z
-    }
-
-    pub fn into_xy(self) -> Vector2<T> {
+    pub fn xy(self) -> Vector2<T> {
         let [x, y, _] = self.0;
         Vector([x, y])
     }
 
-    pub fn into_with_w(self, w: T) -> Vector4<T> {
+    pub fn with_w(self, w: T) -> Vector4<T> {
         let [x, y, z] = self.0;
         Vector([x, y, z, w])
     }
@@ -350,34 +300,42 @@ impl<T> Vector3<T> {
         let [x, y, z] = self.0;
         (Vector([x, y]), z)
     }
-}
 
-impl<T> Vector4<T>
-where
-    T: Copy,
-{
-    pub const fn x(&self) -> T {
-        self.0[0]
-    }
-
-    pub const fn y(&self) -> T {
-        self.0[1]
-    }
-
-    pub const fn z(&self) -> T {
-        self.0[2]
-    }
-
-    pub const fn w(&self) -> T {
-        self.0[3]
-    }
-
-    pub const fn xyz(&self) -> Vector3<T> {
-        Vector([self.x(), self.y(), self.z()])
+    pub fn cross<Rhs>(self, rhs: Vector3<Rhs>) -> Vector3<<<T as Mul<Rhs>>::Output as Sub>::Output>
+    where
+        T: Copy + Mul<Rhs>,
+        Rhs: Copy,
+        <T as Mul<Rhs>>::Output: Sub,
+    {
+        Vector([
+            self.y() * rhs.z() - self.z() * rhs.y(),
+            self.z() * rhs.x() - self.x() * rhs.z(),
+            self.x() * rhs.y() - self.y() * rhs.x(),
+        ])
     }
 }
 
 impl<T> Vector4<T> {
+    pub fn x(self) -> T {
+        let [x, _, _, _] = self.0;
+        x
+    }
+
+    pub fn y(self) -> T {
+        let [_, y, _, _] = self.0;
+        y
+    }
+
+    pub fn z(self) -> T {
+        let [_, _, z, _] = self.0;
+        z
+    }
+
+    pub fn w(self) -> T {
+        let [_, _, _, w] = self.0;
+        w
+    }
+
     pub fn set_x(&mut self, x: T) {
         self.0[0] = x;
     }
@@ -394,27 +352,7 @@ impl<T> Vector4<T> {
         self.0[3] = w;
     }
 
-    pub fn into_x(self) -> T {
-        let [x, _, _, _] = self.0;
-        x
-    }
-
-    pub fn into_y(self) -> T {
-        let [_, y, _, _] = self.0;
-        y
-    }
-
-    pub fn into_z(self) -> T {
-        let [_, _, z, _] = self.0;
-        z
-    }
-
-    pub fn into_w(self) -> T {
-        let [_, _, _, w] = self.0;
-        w
-    }
-
-    pub fn into_xyz(self) -> Vector3<T> {
+    pub fn xyz(self) -> Vector3<T> {
         let [x, y, z, _] = self.0;
         Vector([x, y, z])
     }

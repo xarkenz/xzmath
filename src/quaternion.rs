@@ -66,7 +66,7 @@ where
 
 impl<T> Quaternion<T> {
     pub fn from_parts(real: T, imag: Vector3<T>) -> Self {
-        Self(imag.into_with_w(real))
+        Self(imag.with_w(real))
     }
 
     pub fn zero() -> Self
@@ -91,25 +91,11 @@ impl<T> Quaternion<T> {
         Self::from_parts(cos, axis.normalize().mul(sin))
     }
 
-    pub fn into_real(self) -> T {
-        self.0.into_w()
-    }
-
-    pub fn into_imag(self) -> Vector3<T> {
-        self.0.into_xyz()
-    }
-
-    pub const fn real(&self) -> T
-    where
-        T: Copy,
-    {
+    pub fn real(self) -> T {
         self.0.w()
     }
 
-    pub const fn imag(&self) -> Vector3<T>
-    where
-        T: Copy,
-    {
+    pub fn imag(self) -> Vector3<T> {
         self.0.xyz()
     }
 

@@ -219,14 +219,14 @@ impl<T, const N: usize> Matrix<T, N, N> {
         }
     }
 
-    pub fn trace(&self) -> T
+    pub fn trace(self) -> T
     where
-        T: Copy + Zero + Add<Output = T>,
+        T: Zero + Add<Output = T>,
     {
         self.0
-            .iter()
+            .into_iter()
             .enumerate()
-            .fold(T::zero(), |sum, (i, column)| sum + column[i])
+            .fold(T::zero(), |sum, (i, column)| sum + column.get(i).unwrap())
     }
 
     pub fn transpose_in_place(&mut self) {
@@ -243,38 +243,49 @@ impl<T, const N: usize> Matrix<T, N, N> {
 }
 
 impl<T> Matrix2x2<T> {
-    pub fn extend_3x3(&self) -> Matrix3x3<T>
+    pub fn extend_3x3(self) -> Matrix3x3<T>
     where
-        T: Copy + Zero + One,
+        T: Zero + One,
     {
+        let [col_0, col_1] = self.0;
         Matrix3x3::from_columns([
-            self[0].with_z(T::zero()),
-            self[1].with_z(T::zero()),
+            col_0.with_z(T::zero()),
+            col_1.with_z(T::zero()),
             [T::zero(), T::zero(), T::one()].into(),
         ])
     }
 }
 
 impl<T> Matrix3x3<T> {
-    pub fn shrink_2x2(&self) -> Matrix2x2<T>
-    where
-        T: Copy,
-    {
+    pub fn shrink_2x2(self) -> Matrix2x2<T> {
+        let [col_0, col_1, _] = self.0;
         Matrix2x2::from_columns([
-            self[0].xy(),
-            self[1].xy(),
+            col_0.xy(),
+            col_1.xy(),
         ])
     }
 
-    pub fn extend_4x4(&self) -> Matrix4x4<T>
+    pub fn extend_4x4(self) -> Matrix4x4<T>
     where
-        T: Copy + Zero + One,
+        T: Zero + One,
     {
+        let [col_0, col_1, col_2] = self.0;
         Matrix4x4::from_columns([
-            self[0].with_w(T::zero()),
-            self[1].with_w(T::zero()),
-            self[2].with_w(T::zero()),
+            col_0.with_w(T::zero()),
+            col_1.with_w(T::zero()),
+            col_2.with_w(T::zero()),
             [T::zero(), T::zero(), T::zero(), T::one()].into(),
+        ])
+    }
+}
+
+impl<T> Matrix4x4<T> {
+    pub fn shrink_3x3(self) -> Matrix3x3<T> {
+        let [col_0, col_1, col_2, _] = self.0;
+        Matrix3x3::from_columns([
+            col_0.xyz(),
+            col_1.xyz(),
+            col_2.xyz(),
         ])
     }
 }
@@ -283,7 +294,7 @@ impl<T> Matrix3x3<T>
 where
     T: Float,
 {
-    pub fn to_quaternion(&self) -> Quaternion<T> {
+    pub fn to_quaternion(self) -> Quaternion<T> {
         let imag = Vector([
             self[1][2] - self[2][1],
             self[2][0] - self[0][2],
@@ -295,24 +306,11 @@ where
     }
 }
 
-impl<T> Matrix4x4<T> {
-    pub fn shrink_3x3(&self) -> Matrix3x3<T>
-    where
-        T: Copy,
-    {
-        Matrix3x3::from_columns([
-            self[0].xyz(),
-            self[1].xyz(),
-            self[2].xyz(),
-        ])
-    }
-}
-
 impl<T> Matrix4x4<T>
 where
     T: Float,
 {
-    pub fn to_quaternion(&self) -> Quaternion<T> {
+    pub fn to_quaternion(self) -> Quaternion<T> {
         let imag = Vector([
             self[1][2] - self[2][1],
             self[2][0] - self[0][2],
@@ -327,36 +325,36 @@ where
         let zero = T::zero();
         let one = T::one();
         let (sin, cos) = angle.sin_cos();
-        self.mul_assign(Self([
+        *self *= Self([
             Vector([one, zero, zero, zero]),
             Vector([zero, cos, -sin, zero]),
             Vector([zero, sin, cos, zero]),
             Vector([zero, zero, zero, one]),
-        ]));
+        ]);
     }
 
     pub fn rotate_y(&mut self, angle: T) {
         let zero = T::zero();
         let one = T::one();
         let (sin, cos) = angle.sin_cos();
-        self.mul_assign(Self([
+        *self *= Self([
             Vector([cos, zero, sin, zero]),
             Vector([zero, one, zero, zero]),
             Vector([-sin, zero, cos, zero]),
             Vector([zero, zero, zero, one]),
-        ]));
+        ]);
     }
 
     pub fn rotate_z(&mut self, angle: T) {
         let zero = T::zero();
         let one = T::one();
         let (sin, cos) = angle.sin_cos();
-        self.mul_assign(Self([
+        *self *= Self([
             Vector([cos, sin, zero, zero]),
             Vector([-sin, cos, zero, zero]),
             Vector([zero, zero, one, zero]),
             Vector([zero, zero, zero, one]),
-        ]));
+        ]);
     }
 
     pub fn translate(&mut self, amount: Vector3<T>) {
@@ -382,7 +380,7 @@ where
         self[2] = self[2].mul(amount);
     }
 
-    pub fn inverse(&self) -> Self {
+    pub fn inverse(self) -> Self {
         // Borrowed from JOML (github.com/JOML-CI/JOML)
         let a = self[0][0] * self[1][1] - self[0][1] * self[1][0];
         let b = self[0][0] * self[1][2] - self[0][2] * self[1][0];
