@@ -4,6 +4,7 @@
 #[cfg(feature = "animation")]
 pub mod animation;
 pub mod bounds;
+pub mod fraction;
 pub mod interpolate;
 pub mod matrix;
 #[cfg(feature = "noise")]
@@ -12,6 +13,7 @@ pub mod quaternion;
 pub mod vector;
 
 pub use bounds::*;
+pub use fraction::*;
 pub use matrix::*;
 pub use quaternion::*;
 pub use vector::*;
