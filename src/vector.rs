@@ -148,6 +148,20 @@ impl<T, const N: usize> Vector<T, N> {
         self.0.as_mut_ptr()
     }
 
+    /// Returns a vector of immutable references to each component of `self`.
+    pub fn as_ref(&self) -> Vector<&T, N> {
+        let mut refs = self.0.iter();
+        // SAFETY: The iterator has exactly N elements at compile time
+        Vector::from_fn(|_| unsafe { refs.next().unwrap_unchecked() })
+    }
+
+    /// Returns a vector of mutable references to each component of `self`.
+    pub fn as_mut(&mut self) -> Vector<&mut T, N> {
+        let indices: [usize; N] = std::array::from_fn(|index| index);
+        // SAFETY: indices are non-overlapping and in-bounds by definition
+        Vector(unsafe { self.0.get_disjoint_unchecked_mut(indices) })
+    }
+
     /// Returns the value of the component at `index`.
     ///
     /// Returns [`None`] if `index` &ge; `N`.
